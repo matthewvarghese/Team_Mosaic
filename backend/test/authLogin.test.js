@@ -40,3 +40,22 @@ test('US1: auth/login missing code 400', async () => {
   assert.strictEqual(body.error, 'providerCode is required')
   server.close()
 })
+
+test('US-1:empty request body 400', async () => {
+  const server = http.createServer(app)
+  await new Promise(r => server.listen(0, r))
+  const { port } = server.address()
+
+  const res = await fetch(`http://localhost:${port}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'x-forwarded-proto': 'https',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({})
+  })
+  const body = await res.json()
+  assert.strictEqual(res.status, 400)
+  assert.ok(body.error)
+  server.close()
+})

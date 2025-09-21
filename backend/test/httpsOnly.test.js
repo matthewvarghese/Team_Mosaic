@@ -20,3 +20,23 @@ test('US13 blocks non HTTPS requests', async () => {
     server.close()
   }
 })
+
+test('US-13: mixed header blocked', async () => {
+  const server = http.createServer(app)
+  
+  await new Promise(resolve => {
+    server.listen(0, resolve)
+  })
+  
+  const { port } = server.address()
+
+  try {
+    const res = await fetch(`http://localhost:${port}/health`, {
+      headers: { 'x-forwarded-proto': 'http' }
+    })
+    assert.strictEqual(res.status, 400)
+    assert.deepStrictEqual(await res.json(), { error: 'HTTPS is required' })
+  } finally {
+    server.close()
+  }
+})
