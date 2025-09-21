@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { signJwt, verifyJwt } from '../utils/jwt.js'
+import { signJwt, verifyJwt } from '../auth/jwt.js'
 
 const router = Router()
 
@@ -21,7 +21,7 @@ router.post('/login', (req, res) => {
 
 router.get('/me', (req, res) => {
   const auth = req.get('authorization') || ''
-  const token = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7) : null
+  const token = auth?.match(/^Bearer (.+)$/i)?.[1] || null
   
   if (!token) {
     return res.status(401).json({ error: 'Missing bearer token' })

@@ -6,12 +6,15 @@ import cors from 'cors'
 import { httpsOnly } from './middleware/httpsOnly.js'
 import authRouter from './routes/auth.js'
 import healthRouter from './routes/health.js'
+import { profileRouter } from "./routes/profile.js";
+import { teamRouter } from './routes/teams.js'
 
 const app = express()
 app.use(express.json())
 app.use(cors())
 app.use(helmet())
 app.use(morgan('dev'))
+
 
 //https
 if (process.env.ENFORCE_HTTPS !== 'false') {
@@ -23,6 +26,8 @@ if (process.env.ENFORCE_HTTPS !== 'false') {
 // routes
 app.use('/health', healthRouter)
 app.use('/auth', authRouter)
+app.use(profileRouter);
+app.use(teamRouter)
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = process.env.PORT || 3000
