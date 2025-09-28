@@ -52,3 +52,55 @@ test("US-2:updates profile ", async () => {
   assert.equal(upd.body.title, "Eng II");
   assert.equal(upd.body.name, "Bob"); 
 });
+
+test("US-2: DELETE /me/profile removes profile", async () => {
+  const token = await login("delete@test.dev");
+  
+  await request(app)
+    .post("/me/profile")
+    .set("x-forwarded-proto", "https")
+    .set("authorization", `Bearer ${token}`)
+    .send({ name: "Delete User" });
+    
+  const deleteRes = await request(app)
+    .delete("/me/profile")
+    .set("x-forwarded-proto", "https")
+    .set("authorization", `Bearer ${token}`);
+  assert.equal(deleteRes.status, 204);
+  
+  const getRes = await request(app)
+    .get("/me/profile")
+    .set("x-forwarded-proto", "https")
+    .set("authorization", `Bearer ${token}`);
+  assert.equal(getRes.status, 404);
+});
+
+test("US-2: profile validation with long name fails", async () => {
+  const token = await login("validation@test.dev");
+  const longName = "a".repeat(61); 
+  
+  const res = await request(app)
+    .post("/me/profile")
+    .set("x-forwarded-proto", "https")
+    .set("authorization", `Bearer ${token}`)
+    .send({ name: longName });
+    
+  assert.equal(res.status, 422);
+  assert.ok(res.body.errors.name.includes("≤ 60"));
+});
+
+test("US-2: profile with invalid URL fails validation", async () => {
+  const token = await login("url@test.dev");
+  
+  const res = await request(app)
+    .post("/me/profile")
+    .set("x-forwarded-proto", "https")
+    .set("authorization", `Bearer ${token}`)
+    .send({ 
+      name: "URL User",
+      links: ["not-a-url", "https://valid.com"]
+    });
+    
+  assert.equal(res.status, 422);
+  assert.ok(res.body.errors.links.includes("invalid URL"));
+});

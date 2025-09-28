@@ -51,3 +51,24 @@ test("US-4: GET teamid not found ", async () => {
   assert.equal(res.status, 404);
   assert.equal(res.body.error, "Team not found");
 });
+
+test("US-4: GET /teams returns user's teams", async () => {
+  const token = await login("list@test.dev");
+  
+  const createRes = await request(app)
+    .post("/teams")
+    .set("x-forwarded-proto", "https")
+    .set("authorization", `Bearer ${token}`)
+    .send({ name: "My Team", description: "Test team" });
+  assert.equal(createRes.status, 201);
+  
+  const listRes = await request(app)
+    .get("/teams")
+    .set("x-forwarded-proto", "https")
+    .set("authorization", `Bearer ${token}`);
+    
+  assert.equal(listRes.status, 200);
+  assert.ok(Array.isArray(listRes.body.teams));
+  assert.equal(listRes.body.teams.length, 1);
+  assert.equal(listRes.body.teams[0].name, "My Team");
+});

@@ -31,3 +31,14 @@ teamRouter.get("/teams/:id", requireAuth, (req, res) => {
   if (!t) return res.status(404).json({ error: "Team not found" });
   return res.json(t);
 });
+
+teamRouter.get("/teams", requireAuth, (req, res) => {
+  const mine = [];
+  for (const t of teams.values()) {
+    if (Array.isArray(t.members) && t.members.some(m => m.user === req.user.email)) {
+      mine.push(t);
+    }
+  }
+  mine.sort((a, b) => Number(b.id) - Number(a.id));
+  res.json({ teams: mine });
+});

@@ -3,7 +3,7 @@ import { signJwt, verifyJwt } from '../auth/jwt.js'
 
 const router = Router()
 
-//w2 change AUth
+//S4 change AUth
 router.post('/login', (req, res) => {
   const { providerCode, email } = req.body || {}
   
@@ -17,6 +17,10 @@ router.post('/login', (req, res) => {
   })
   
   res.status(200).json({ token })
+})
+
+router.get('/providers', (_req, res) => {
+  res.json({ providers: ['google', 'github','dummy'] })
 })
 
 router.get('/me', (req, res) => {
@@ -34,5 +38,7 @@ router.get('/me', (req, res) => {
   
   res.json({ me: claims })
 })
-
+router.post('/logout', (_req, res) => {
+  res.status(204).end()
+})
 export default router
