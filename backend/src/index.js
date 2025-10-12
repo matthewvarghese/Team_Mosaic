@@ -9,6 +9,7 @@ import healthRouter from './routes/health.js'
 import { profileRouter } from "./routes/profile.js";
 import { teamRouter } from './routes/teams.js'
 import { skillsRouter } from './routes/skills.js'
+import { projectRouter } from "./routes/projects.js";
 
 const app = express()
 app.use(express.json())
@@ -30,6 +31,7 @@ app.use('/auth', authRouter)
 app.use(profileRouter);
 app.use(teamRouter)
 app.use(skillsRouter)
+app.use(projectRouter);
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = process.env.PORT || 3000

@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { teams, teamNames, nextId } from "../db/memory.js";
+import { teams, teamNames, nextId, skillsByUser, getProjectById} from "../db/memory.js";
 import { validateTeam } from "../validation/teams.js";
 import { validateMemberAdd, validateMemberRole } from "../validation/members.js";
+import { validateGapRequest } from "../validation/analysis.js";
 
 export const teamRouter = Router();
 
@@ -119,4 +120,56 @@ teamRouter.delete("/teams/:id/members/:user", requireAuth, (req, res) => {
 
   t.members.splice(idx, 1);
   return res.status(204).end();
+});
+
+teamRouter.post("/teams/:id/gap-analysis", requireAuth, (req, res) => {
+  const t = findTeam(req.params.id);
+  if (!t) return res.status(404).json({ error: "Team not found" });
+
+  if (!hasMember(t, req.user.email)) {
+    return res.status(403).json({ error: "Access denied. Not a team member." });
+  }
+
+  let requirements;
+
+  if (req.body.projectId) {
+    const project = getProjectById(req.body.projectId);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+    if (project.teamId !== req.params.id) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+    requirements = project.requirements;
+  } else {
+    const v = validateGapRequest(req.body);
+    if (!v.ok) return res.status(422).json({ errors: v.errors });
+    requirements = req.body.requirements;
+  }
+
+  const results = {};
+  for (const { skill, level: required } of requirements) {
+    let sum = 0;
+    let count = 0;
+
+    for (const m of t.members) {
+      const list = skillsByUser.get(m.user) || [];
+      const match = list.find(s => s.name.toLowerCase().trim() === skill.toLowerCase().trim());
+      if (match) {
+        sum += match.level;
+        count += 1;
+      }
+    }
+
+    const average = count === 0 ? 0 : sum / count;
+    const gap = Math.max(0, required - average);
+
+    results[skill] = {
+      required,
+      average: Number(average.toFixed(2)),
+      gap: Number(gap.toFixed(2)),
+    };
+  }
+
+  return res.json(results);
 });

@@ -2,6 +2,7 @@ export const profilesByUser = new Map();
 export const teams = new Map();
 export const teamNames = new Map();
 export const skillsByUser = new Map();
+export const projects = new Map();
 
 let seq = 1;
 export function nextId() {
@@ -43,4 +44,47 @@ export function deleteUserSkill(email, id) {
   if (idx === -1) return false;
   list.splice(idx, 1);
   return true;
+}
+
+export function getProjectsByTeam(teamId) {
+  const teamProjects = [];
+  for (const [id, project] of projects.entries()) {
+    if (project.teamId === teamId) {
+      teamProjects.push(project);
+    }
+  }
+  return teamProjects;
+}
+
+export function getProjectById(projectId) {
+  return projects.get(projectId) || null;
+}
+
+export function createProject(teamId, data) {
+  const id = nextId();
+  const project = {
+    id,
+    teamId,
+    name: data.name.trim(),
+    description: data.description || "",
+    requirements: data.requirements, 
+    createdAt: new Date().toISOString()
+  };
+  projects.set(id, project);
+  return project;
+}
+
+export function updateProject(projectId, data) {
+  const project = projects.get(projectId);
+  if (!project) return null;
+  
+  if (data.name !== undefined) project.name = data.name.trim();
+  if (data.description !== undefined) project.description = data.description;
+  if (data.requirements !== undefined) project.requirements = data.requirements;
+  
+  return project;
+}
+
+export function deleteProject(projectId) {
+  return projects.delete(projectId);
 }
