@@ -4,12 +4,12 @@ import morgan from 'morgan'
 import helmet from 'helmet'
 import cors from 'cors'
 import { httpsOnly } from './middleware/httpsOnly.js'
-import authRouter from './routes/auth.js'
+import {authRouter} from './routes/auth.js'
 import healthRouter from './routes/health.js'
 import { profileRouter } from "./routes/profile.js";
 import { teamRouter } from './routes/teams.js'
 import { skillsRouter } from './routes/skills.js'
-import { projectRouter } from "./routes/projects.js";
+import { projectsRouter } from "./routes/projects.js";
 
 const app = express()
 app.use(express.json())
@@ -27,11 +27,11 @@ if (process.env.ENFORCE_HTTPS !== 'false') {
   
 // routes
 app.use('/health', healthRouter)
-app.use('/auth', authRouter)
+app.use(authRouter)
 app.use(profileRouter);
 app.use(teamRouter)
 app.use(skillsRouter)
-app.use(projectRouter);
+app.use(projectsRouter);
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = process.env.PORT || 3000

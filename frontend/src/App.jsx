@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './auth/AuthContext';
 import { AuthGate } from './auth/AuthGate';
 import { LoginPage } from './auth/LoginPage';
+import { OAuthCallbackPage } from './auth/OAuthCallbackPage';
 import { DashboardPage } from './DashboardPage';
 import { ProfilePage } from './profile/ProfilePage';
 import { SkillsPage } from './skills/SkillsPage';
@@ -25,6 +26,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth/callback" element={<OAuthCallbackPage />} />
             <Route
               path="/"
               element={

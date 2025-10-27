@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../lib/api';
-import { getToken, setToken, removeToken } from '../lib/auth';
+import { getToken, setToken as saveToken, removeToken } from '../lib/auth';
 
 const AuthContext = createContext(null);
 
@@ -39,9 +39,9 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email) => {
     try {
-      const response = await authAPI.login(email);
+      const response = await authAPI.login({ providerCode: 'dummy', email });
       const token = response.data.token;
-      setToken(token);
+      saveToken(token);
       
       const userResponse = await authAPI.me();
       const userData = {
@@ -59,6 +59,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const setToken = (token) => {
+    saveToken(token);
+  };
+
   const logout = () => {
     removeToken();
     setUser(null);
@@ -68,6 +72,7 @@ export const AuthProvider = ({ children }) => {
     user,
     login,
     logout,
+    setToken,
     isAuthenticated: !!user,
     loading
   };

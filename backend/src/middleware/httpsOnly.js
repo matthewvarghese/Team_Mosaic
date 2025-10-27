@@ -1,4 +1,11 @@
 export function httpsOnly(req, res, next) {
+  if (process.env.NODE_ENV === 'development') {
+    return next();
+  }
+
+  if (req.path.startsWith('/auth/google')) {
+    return next();
+  }
     const isSecure = req.secure || (req.get('x-forwarded-proto') === 'https')
     if (!isSecure) {
       return res.status(400).json({ error: 'HTTPS is required' })
