@@ -80,6 +80,16 @@ export const ProjectsTab = ({ teamId, team }) => {
     }
   };
 
+  const getImportanceEmoji = (importance) => {
+    switch(importance) {
+      case 'critical': return '🔴';
+      case 'high': return '🟠';
+      case 'medium': return '🟡';
+      case 'nice-to-have': return '🟢';
+      default: return '🟡';
+    }
+  };
+
   if (isLoading) return <div>Loading projects...</div>;
 
   return (
@@ -106,7 +116,12 @@ export const ProjectsTab = ({ teamId, team }) => {
                   <ul>
                     {project.requirements.map((req, idx) => (
                       <li key={idx}>
-                        {req.skill} - Level {req.level}
+                        <strong>{req.skill}</strong> - Level {req.level}
+                        {req.importance && (
+                          <span style={{ marginLeft: '10px', fontSize: '14px' }}>
+                            {getImportanceEmoji(req.importance)} {req.importance}
+                          </span>
+                        )}
                       </li>
                     ))}
                   </ul>

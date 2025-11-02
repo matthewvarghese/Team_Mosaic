@@ -1,16 +1,30 @@
-import { describe, it, beforeEach } from "node:test";
+import { describe, it, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import request from "supertest";
 import app from "../src/index.js";
-import { teams, skillsByUser, teamNames } from "../src/db/memory.js";
+import { pool } from "../src/db/helpers.js";
 
 describe("Gap Analysis System Tests", () => {
   let ownerToken, memberToken, outsiderToken, teamId;
 
+  async function cleanDatabase() {
+    const tables = [
+      'project_requirements',
+      'projects',
+      'team_members',
+      'teams',
+      'skills',
+      'profiles',
+      'users'
+    ];
+
+    for (const table of tables) {
+      await pool.query(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE`);
+    }
+  }
+
   beforeEach(async () => {
-    teams.clear();
-    teamNames.clear();
-    skillsByUser.clear();
+    await cleanDatabase();
 
     const ownerRes = await request(app)
       .post("/auth/login")
@@ -75,22 +89,23 @@ describe("Gap Analysis System Tests", () => {
       .set("authorization", `Bearer ${ownerToken}`)
       .send({
         requirements: [
-          { skill: "JavaScript", level: 4 },
-          { skill: "Python", level: 5 },
-          { skill: "Docker", level: 3 }
+          { skill: "JavaScript", level: 4, importance: "medium" },
+          { skill: "Python", level: 5, importance: "medium" },
+          { skill: "Docker", level: 3, importance: "medium" }
         ]
       });
 
     assert.strictEqual(res.status, 200);
-    assert.strictEqual(res.body.JavaScript.required, 4);
-    assert.strictEqual(res.body.JavaScript.average, 3);
-    assert.strictEqual(res.body.JavaScript.gap, 1);
-    assert.strictEqual(res.body.Python.required, 5);
-    assert.strictEqual(res.body.Python.average, 3);
-    assert.strictEqual(res.body.Python.gap, 2);
-    assert.strictEqual(res.body.Docker.required, 3);
-    assert.strictEqual(res.body.Docker.average, 2);
-    assert.strictEqual(res.body.Docker.gap, 1);
+    assert.ok(res.body.skills);
+    assert.strictEqual(res.body.skills.JavaScript.required, 4);
+    assert.strictEqual(res.body.skills.JavaScript.average, 3);
+    assert.strictEqual(res.body.skills.JavaScript.gap, 1);
+    assert.strictEqual(res.body.skills.Python.required, 5);
+    assert.strictEqual(res.body.skills.Python.average, 3);
+    assert.strictEqual(res.body.skills.Python.gap, 2);
+    assert.strictEqual(res.body.skills.Docker.required, 3);
+    assert.strictEqual(res.body.skills.Docker.average, 2);
+    assert.strictEqual(res.body.skills.Docker.gap, 1);
   });
 
   it("GAP-2: should show zero average for missing skills", async () => {
@@ -99,13 +114,13 @@ describe("Gap Analysis System Tests", () => {
       .set("x-forwarded-proto", "https")
       .set("authorization", `Bearer ${ownerToken}`)
       .send({
-        requirements: [{ skill: "Node.js", level: 3 }]
+        requirements: [{ skill: "Node.js", level: 3, importance: "medium" }]
       });
 
     assert.strictEqual(res.status, 200);
-    assert.strictEqual(res.body["Node.js"].required, 3);
-    assert.strictEqual(res.body["Node.js"].average, 0);
-    assert.strictEqual(res.body["Node.js"].gap, 3);
+    assert.strictEqual(res.body.skills["Node.js"].required, 3);
+    assert.strictEqual(res.body.skills["Node.js"].average, 0);
+    assert.strictEqual(res.body.skills["Node.js"].gap, 3);
   });
 
   it("GAP-3: should reject invalid skill level", async () => {

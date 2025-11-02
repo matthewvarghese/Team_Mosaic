@@ -1,7 +1,30 @@
-import { test } from "node:test";
+import { test, afterEach, after } from "node:test";
 import assert from "node:assert/strict";
 import request from "supertest";
 import app from "../src/index.js";
+import { pool } from "../src/db/helpers.js";
+
+async function cleanDatabase() {
+  const tables = [
+    'project_requirements',
+    'projects',
+    'team_members',
+    'teams',
+    'skills',
+    'profiles',
+    'users'
+  ];
+
+  for (const table of tables) {
+    await pool.query(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE`);
+  }
+}
+
+afterEach(async () => {
+  await cleanDatabase();
+});
+
+
 
 async function login(email = "teams@test.dev") {
   const res = await request(app)

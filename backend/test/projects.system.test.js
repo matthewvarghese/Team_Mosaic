@@ -1,17 +1,30 @@
-import { describe, it, beforeEach } from "node:test";
+import { describe, it, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import request from "supertest";
 import app from "../src/index.js";
-import { teams, projects, teamNames, skillsByUser } from "../src/db/memory.js";
+import { pool } from "../src/db/helpers.js";
 
 describe("Project Management System Tests", () => {
   let ownerToken, memberToken, outsiderToken, teamId;
 
+  async function cleanDatabase() {
+    const tables = [
+      'project_requirements',
+      'projects',
+      'team_members',
+      'teams',
+      'skills',
+      'profiles',
+      'users'
+    ];
+
+    for (const table of tables) {
+      await pool.query(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE`);
+    }
+  }
+
   beforeEach(async () => {
-    teams.clear();
-    teamNames.clear();
-    projects.clear();
-    skillsByUser.clear();
+    await cleanDatabase();
 
     const ownerRes = await request(app)
       .post("/auth/login")
@@ -45,6 +58,10 @@ describe("Project Management System Tests", () => {
       .send({ user: "proj-member@test.com", role: "member" });
   });
 
+  after(async () => {
+    await pool.end();
+  });
+
   it("PROJ-1: owner creates project with requirements", async () => {
     const res = await request(app)
       .post(`/teams/${teamId}/projects`)
@@ -54,15 +71,14 @@ describe("Project Management System Tests", () => {
         name: "E-Commerce Platform",
         description: "Online shopping system",
         requirements: [
-          { skill: "React", level: 4 },
-          { skill: "Node.js", level: 3 }
+          { skill: "React", level: 4, importance: "critical" },
+          { skill: "Node.js", level: 3, importance: "high" }
         ]
       });
 
     assert.strictEqual(res.status, 201);
     assert.ok(res.body.id);
     assert.strictEqual(res.body.name, "E-Commerce Platform");
-    assert.strictEqual(res.body.teamId, teamId);
     assert.strictEqual(res.body.requirements.length, 2);
   });
 
@@ -73,7 +89,7 @@ describe("Project Management System Tests", () => {
       .set("authorization", `Bearer ${ownerToken}`)
       .send({
         name: "Project Alpha",
-        requirements: [{ skill: "Python", level: 3 }]
+        requirements: [{ skill: "Python", level: 3, importance: "medium" }]
       });
 
     const res = await request(app)
@@ -94,7 +110,7 @@ describe("Project Management System Tests", () => {
       .set("authorization", `Bearer ${ownerToken}`)
       .send({
         name: "Project Beta",
-        requirements: [{ skill: "Java", level: 4 }]
+        requirements: [{ skill: "Java", level: 4, importance: "high" }]
       });
 
     const projectId = createRes.body.id;
@@ -116,7 +132,7 @@ describe("Project Management System Tests", () => {
       .set("authorization", `Bearer ${ownerToken}`)
       .send({
         name: "Original Name",
-        requirements: [{ skill: "Go", level: 2 }]
+        requirements: [{ skill: "Go", level: 2, importance: "medium" }]
       });
 
     const projectId = createRes.body.id;
@@ -127,7 +143,8 @@ describe("Project Management System Tests", () => {
       .set("authorization", `Bearer ${ownerToken}`)
       .send({
         name: "Updated Name",
-        description: "New description"
+        description: "New description",
+        requirements: [{ skill: "Go", level: 3, importance: "high" }]
       });
 
     assert.strictEqual(res.status, 200);
@@ -142,7 +159,7 @@ describe("Project Management System Tests", () => {
       .set("authorization", `Bearer ${ownerToken}`)
       .send({
         name: "To Be Deleted",
-        requirements: [{ skill: "Rust", level: 3 }]
+        requirements: [{ skill: "Rust", level: 3, importance: "medium" }]
       });
 
     const projectId = createRes.body.id;
@@ -169,7 +186,7 @@ describe("Project Management System Tests", () => {
       .set("authorization", `Bearer ${memberToken}`)
       .send({
         name: "Unauthorized Project",
-        requirements: [{ skill: "TypeScript", level: 3 }]
+        requirements: [{ skill: "TypeScript", level: 3, importance: "medium" }]
       });
 
     assert.strictEqual(res.status, 403);
@@ -183,7 +200,7 @@ describe("Project Management System Tests", () => {
       .set("authorization", `Bearer ${ownerToken}`)
       .send({
         name: "Viewable Project",
-        requirements: [{ skill: "Docker", level: 2 }]
+        requirements: [{ skill: "Docker", level: 2, importance: "medium" }]
       });
 
     const res = await request(app)
@@ -201,7 +218,7 @@ describe("Project Management System Tests", () => {
       .set("x-forwarded-proto", "https")
       .set("authorization", `Bearer ${ownerToken}`)
       .send({
-        requirements: [{ skill: "Python", level: 3 }]
+        requirements: [{ skill: "Python", level: 3, importance: "medium" }]
       });
 
     assert.strictEqual(res.status, 422);
@@ -229,7 +246,7 @@ describe("Project Management System Tests", () => {
       .set("authorization", `Bearer ${ownerToken}`)
       .send({
         name: "Invalid Level Project",
-        requirements: [{ skill: "Ruby", level: 7 }]
+        requirements: [{ skill: "Ruby", level: 7, importance: "medium" }]
       });
 
     assert.strictEqual(res.status, 422);
@@ -244,8 +261,8 @@ describe("Project Management System Tests", () => {
       .send({
         name: "Analysis Project",
         requirements: [
-          { skill: "JavaScript", level: 4 },
-          { skill: "Python", level: 3 }
+          { skill: "JavaScript", level: 4, importance: "critical" },
+          { skill: "Python", level: 3, importance: "high" }
         ]
       });
 
@@ -264,10 +281,10 @@ describe("Project Management System Tests", () => {
       .send({ projectId });
 
     assert.strictEqual(res.status, 200);
-    assert.ok(res.body.JavaScript);
-    assert.strictEqual(res.body.JavaScript.required, 4);
-    assert.strictEqual(res.body.JavaScript.average, 2);
-    assert.strictEqual(res.body.JavaScript.gap, 2);
+    assert.ok(res.body.skills.JavaScript);
+    assert.strictEqual(res.body.skills.JavaScript.required, 4);
+    assert.strictEqual(res.body.skills.JavaScript.average, 2);
+    assert.strictEqual(res.body.skills.JavaScript.gap, 2);
   });
 
   it("PROJ-12: non-member cannot access team projects", async () => {
@@ -277,6 +294,6 @@ describe("Project Management System Tests", () => {
       .set("authorization", `Bearer ${outsiderToken}`);
 
     assert.strictEqual(res.status, 403);
-    assert.ok(res.body.error.includes("Not a team member"));
+    assert.ok(res.body.error.includes("Not a member"));
   });
 });

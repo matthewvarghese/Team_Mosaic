@@ -33,7 +33,7 @@ projectsRouter.get("/teams/:teamId/projects", requireAuth, async (req, res) => {
       `SELECT p.id, p.name, p.description, p.created_at,
               COALESCE(
                 json_agg(
-                  json_build_object('skill', pr.skill, 'level', pr.level)
+                  json_build_object('skill', pr.skill, 'level', pr.level, 'importance', pr.importance)
                   ORDER BY pr.skill
                 ) FILTER (WHERE pr.id IS NOT NULL),
                 '[]'
@@ -70,7 +70,7 @@ projectsRouter.get("/teams/:teamId/projects/:id", requireAuth, async (req, res) 
       `SELECT p.id, p.name, p.description, p.created_at,
               COALESCE(
                 json_agg(
-                  json_build_object('skill', pr.skill, 'level', pr.level)
+                  json_build_object('skill', pr.skill, 'level', pr.level , 'importance', pr.importance)
                   ORDER BY pr.skill
                 ) FILTER (WHERE pr.id IS NOT NULL),
                 '[]'
@@ -122,8 +122,8 @@ projectsRouter.post("/teams/:teamId/projects", requireAuth, async (req, res) => 
       if (requirements && requirements.length > 0) {
         for (const req of requirements) {
           await client.query(
-            'INSERT INTO project_requirements (project_id, skill, level) VALUES ($1, $2, $3)',
-            [project.id, req.skill, req.level]
+            'INSERT INTO project_requirements (project_id, skill, level, importance) VALUES ($1, $2, $3, $4)',
+            [project.id, req.skill, req.level , req.importance || 'medium']
           );
         }
       }
@@ -175,8 +175,8 @@ projectsRouter.put("/teams/:teamId/projects/:id", requireAuth, async (req, res) 
       if (requirements && requirements.length > 0) {
         for (const req of requirements) {
           await client.query(
-            'INSERT INTO project_requirements (project_id, skill, level) VALUES ($1, $2, $3)',
-            [id, req.skill, req.level]
+            'INSERT INTO project_requirements (project_id, skill, level, importance) VALUES ($1, $2, $3, $4)',
+            [id, req.skill, req.level , req.importance || 'medium']
           );
         }
       }

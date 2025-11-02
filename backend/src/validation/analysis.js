@@ -1,24 +1,33 @@
 export function validateGapRequest(body) {
     const errors = {};
-    if (!body || typeof body !== "object") {
-      return { ok: false, errors: { payload: "Invalid JSON body" } };
+    if (!body.requirements || !Array.isArray(body.requirements)) {
+      errors.requirements = 'Requirements array is required';
+      return { ok: false, errors };
     }
-    const { requirements } = body;
-    if (!Array.isArray(requirements) || requirements.length === 0) {
-      errors.requirements = "requirements must be a non-empty array";
-    } else {
-      for (const [i, r] of requirements.entries()) {
-        if (!r || typeof r !== "object") {
-          errors[`requirements[${i}]`] = "must be an object";
-          continue;
-        }
-        if (!r.skill || typeof r.skill !== "string" || !r.skill.trim()) {
-          errors[`requirements[${i}].skill`] = "skill is required";
-        }
-        if (!Number.isInteger(r.level) || r.level < 1 || r.level > 5) {
-          errors[`requirements[${i}].level`] = "level must be 1–5 integer";
+    
+    if (body.requirements.length === 0) {
+      errors.requirements = 'At least one requirement is needed';
+      return { ok: false, errors };
+    }
+    
+    body.requirements.forEach((req, idx) => {
+      if (!req.skill || typeof req.skill !== 'string' || !req.skill.trim()) {
+        errors[`requirements[${idx}].skill`] = 'Skill name is required';
+      }
+      
+      if (!req.level || typeof req.level !== 'number' || req.level < 1 || req.level > 5) {
+        errors[`requirements[${idx}].level`] = 'Level must be between 1 and 5';
+      }
+      
+      if (req.importance) {
+        const validImportance = ['critical', 'high', 'medium', 'nice-to-have'];
+        if (!validImportance.includes(req.importance)) {
+          errors[`requirements[${idx}].importance`] = 'Importance must be one of: critical, high, medium, nice-to-have';
         }
       }
-    }
-    return { ok: Object.keys(errors).length === 0, errors };
+    });
+    
+    return Object.keys(errors).length > 0 
+      ? { ok: false, errors } 
+      : { ok: true };
   }

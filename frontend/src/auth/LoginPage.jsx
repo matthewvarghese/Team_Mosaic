@@ -62,7 +62,7 @@ export const LoginPage = () => {
         maxWidth: '400px', 
         width: '100%',
         padding: '40px',
-        backgroundColor: 'white',
+        backgroundColor: 'black',
         border: '1px solid #ddd',
         borderRadius: '8px',
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
@@ -110,97 +110,7 @@ export const LoginPage = () => {
           fontSize: '14px',
           position: 'relative'
         }}>
-          <span style={{
-            backgroundColor: 'white',
-            padding: '0 10px',
-            position: 'relative',
-            zIndex: 1
-          }}>
-            OR
-          </span>
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: 0,
-            right: 0,
-            height: '1px',
-            backgroundColor: '#ddd',
-            zIndex: 0
-          }} />
         </div>
-
-        <form onSubmit={handleDummySubmit}>
-          <div style={{ marginBottom: '15px' }}>
-            <label 
-              htmlFor="email" 
-              style={{ 
-                display: 'block', 
-                marginBottom: '5px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333'
-              }}
-            >
-              Email (Demo Mode):
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
-              required
-            />
-          </div>
-
-          {error && (
-            <div style={{ 
-              color: '#d32f2f', 
-              marginBottom: '15px',
-              padding: '10px',
-              backgroundColor: '#ffebee',
-              borderRadius: '4px',
-              fontSize: '14px',
-              border: '1px solid #ef9a9a'
-            }}>
-              {error}
-            </div>
-          )}
-
-          <button 
-            type="submit" 
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '12px',
-              backgroundColor: loading ? '#ccc' : '#666',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '16px',
-              fontWeight: '500',
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {loading ? 'Signing in...' : 'Sign In (Demo)'}
-          </button>
-        </form>
-        
-        <p style={{ 
-          marginTop: '20px', 
-          fontSize: '12px', 
-          color: '#666',
-          textAlign: 'center'
-        }}>
-          Demo 
-        </p>
       </div>
     </div>
   );

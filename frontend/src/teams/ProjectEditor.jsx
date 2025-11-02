@@ -9,7 +9,7 @@ export const ProjectEditor = ({ initialData, onSave, onCancel, isSaving }) => {
   const addRequirement = () => {
     setFormData({
       ...formData,
-      requirements: [...formData.requirements, { skill: '', level: 3 }]
+      requirements: [...formData.requirements, { skill: '', level: 3, importance: 'medium' }]
     });
   };
 
@@ -55,7 +55,8 @@ export const ProjectEditor = ({ initialData, onSave, onCancel, isSaving }) => {
       ...formData,
       requirements: formData.requirements.map(r => ({
         skill: r.skill.trim(),
-        level: parseInt(r.level)
+        level: parseInt(r.level),
+        importance: r.importance || 'medium'
       }))
     };
 
@@ -101,6 +102,7 @@ export const ProjectEditor = ({ initialData, onSave, onCancel, isSaving }) => {
               <tr>
                 <th>Skill</th>
                 <th>Required Level</th>
+                <th>Importance</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -140,6 +142,18 @@ export const ProjectEditor = ({ initialData, onSave, onCancel, isSaving }) => {
                     )}
                   </td>
                   <td>
+                    <select
+                      value={req.importance || 'medium'}
+                      onChange={(e) => updateRequirement(idx, 'importance', e.target.value)}
+                      required
+                    >
+                      <option value="critical">🔴 Critical</option>
+                      <option value="high">🟠 High</option>
+                      <option value="medium">🟡 Medium</option>
+                      <option value="nice-to-have">🟢 Nice-to-have</option>
+                    </select>
+                  </td>
+                  <td>
                     <button type="button" onClick={() => removeRequirement(idx)}>
                       Remove
                     </button>
@@ -153,6 +167,24 @@ export const ProjectEditor = ({ initialData, onSave, onCancel, isSaving }) => {
         <button type="button" onClick={addRequirement}>
           Add Requirement
         </button>
+
+        <div style={{ 
+          marginTop: '15px', 
+          padding: '12px', 
+          background: '#f9fafb', 
+          border: '1px solid #e5e7eb',
+          borderRadius: '6px',
+          fontSize: '13px',
+          color: '#6b7280'
+        }}>
+          <strong>Importance Levels:</strong>
+          <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+            <li><strong>🔴 Critical:</strong> Project cannot proceed without this skill</li>
+            <li><strong>🟠 High:</strong> Very important, significant delays if missing</li>
+            <li><strong>🟡 Medium:</strong> Important but workarounds exist</li>
+            <li><strong>🟢 Nice-to-have:</strong> Beneficial but not required</li>
+          </ul>
+        </div>
       </div>
 
       <div style={{ marginTop: '20px' }}>

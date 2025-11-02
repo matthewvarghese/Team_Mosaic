@@ -276,47 +276,220 @@ teamRouter.post("/teams/:id/gap-analysis", requireAuth, async (req, res) => {
       }
 
       const reqResult = await query(
-        'SELECT skill, level FROM project_requirements WHERE project_id = $1',
+        'SELECT skill, level, importance FROM project_requirements WHERE project_id = $1',
         [req.body.projectId]
       );
-      requirements = reqResult.rows;
+      requirements = reqResult.rows.map(r => ({
+        skill: r.skill,
+        level: r.level,
+        importance: r.importance || 'medium'
+      }));
     } else {
       const v = validateGapRequest(req.body);
       if (!v.ok) return res.status(422).json({ errors: v.errors });
       requirements = req.body.requirements;
     }
 
-    const results = {};
-    
-    for (const { skill, level: required } of requirements) {
-      let sum = 0;
-      let count = 0;
+    const analysis = await runEnhancedGapAnalysis(team, requirements);
 
-      for (const m of team.members) {
-        const skillResult = await query(
-          'SELECT name, level FROM skills WHERE user_email = $1 AND LOWER(name) = LOWER($2)',
-          [m.user, skill]
-        );
 
-        if (skillResult.rows.length > 0) {
-          sum += skillResult.rows[0].level;
-          count += 1;
-        }
-      }
-
-      const average = count === 0 ? 0 : sum / count;
-      const gap = Math.max(0, required - average);
-
-      results[skill] = {
-        required,
-        average: Number(average.toFixed(2)),
-        gap: Number(gap.toFixed(2)),
-      };
-    }
-
-    return res.json(results);
+    return res.json(analysis);
   } catch (error) {
     console.error('Error running gap analysis:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+async function runEnhancedGapAnalysis(team, requirements) {
+  const IMPORTANCE_WEIGHTS = {
+    'critical': 3.0,
+    'high': 2.0,
+    'medium': 1.5,
+    'nice-to-have': 1.0
+  };
+
+  const skillAnalyses = {};
+  
+  for (const req of requirements) {
+    const { skill, level: required, importance = 'medium' } = req;
+    
+    const memberData = [];
+    for (const member of team.members) {
+      const skillResult = await query(
+        'SELECT name, level FROM skills WHERE user_email = $1 AND LOWER(name) = LOWER($2)',
+        [member.user, skill]
+      );
+
+      if (skillResult.rows.length > 0) {
+        memberData.push({
+          email: member.user,
+          level: skillResult.rows[0].level
+        });
+      }
+    }
+
+    const levels = memberData.map(m => m.level);
+    const sum = levels.reduce((acc, val) => acc + val, 0);
+    const average = levels.length > 0 ? sum / levels.length : 0;
+    const gap = Math.max(0, required - average);
+    const weightedGap = gap * IMPORTANCE_WEIGHTS[importance];
+
+    const coverage = {
+      count: memberData.length,
+      members: memberData.map(m => m.email),
+      levels: levels,
+      busFactor: memberData.length
+    };
+
+    const riskAnalysis = calculateRiskScore(
+      gap,
+      coverage,
+      levels,
+      importance,
+      IMPORTANCE_WEIGHTS
+    );
+
+    skillAnalyses[skill] = {
+      required,
+      average: Number(average.toFixed(2)),
+      gap: Number(gap.toFixed(2)),
+      importance,
+      weightedGap: Number(weightedGap.toFixed(2)),
+      coverage,
+      risk: riskAnalysis
+    };
+  }
+
+  const overallRisk = calculateOverallRisk(skillAnalyses, requirements, IMPORTANCE_WEIGHTS);
+
+  const summary = generateSummary(skillAnalyses, requirements);
+
+  return {
+    projectId: requirements[0]?.projectId || null,
+    analyzedAt: new Date().toISOString(),
+    overallRisk,
+    skills: skillAnalyses,
+    summary
+  };
+}
+
+function calculateRiskScore(gap, coverage, levels, importance, IMPORTANCE_WEIGHTS) {
+  const gapRisk = Math.min(1.0, gap / 5);
+
+  let coverageRisk;
+  const count = coverage.count;
+  if (count === 0) {
+    coverageRisk = 1.0;  
+  } else if (count === 1) {
+    coverageRisk = 0.7;
+  } else if (count === 2) {
+    coverageRisk = 0.3;
+  } else {
+    coverageRisk = 0.1;
+  }
+
+  let variabilityRisk = 0;
+  if (levels.length === 0) {
+    variabilityRisk = 0.5;
+  } else if (levels.length > 1) {
+    const stdDev = calculateStandardDeviation(levels);
+    variabilityRisk = stdDev > 1.5 ? 0.3 : stdDev > 1.0 ? 0.15 : 0;
+  }
+
+  const baseRisk = (
+    gapRisk * 0.4 +
+    coverageRisk * 0.4 +
+    variabilityRisk * 0.2
+  );
+
+  const importanceMultiplier = IMPORTANCE_WEIGHTS[importance];
+  const finalRiskScore = baseRisk * importanceMultiplier * 10;
+
+  let riskLevel;
+  if (finalRiskScore >= 8) {
+    riskLevel = 'critical';
+  } else if (finalRiskScore >= 5) {
+    riskLevel = 'high';
+  } else if (finalRiskScore >= 3) {
+    riskLevel = 'medium';
+  } else {
+    riskLevel = 'low';
+  }
+
+  const bottleneck = (count <= 1 && importance !== 'nice-to-have');
+
+  return {
+    score: Number(Math.min(10, finalRiskScore).toFixed(1)),
+    level: riskLevel,
+    bottleneck,
+    factors: {
+      gapRisk: Number(gapRisk.toFixed(3)),
+      coverageRisk: Number(coverageRisk.toFixed(3)),
+      variabilityRisk: Number(variabilityRisk.toFixed(3))
+    }
+  };
+}
+
+function calculateStandardDeviation(values) {
+  if (values.length === 0) return 0;
+  const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+  const squareDiffs = values.map(value => Math.pow(value - avg, 2));
+  const avgSquareDiff = squareDiffs.reduce((sum, val) => sum + val, 0) / values.length;
+  return Math.sqrt(avgSquareDiff);
+}
+
+function calculateOverallRisk(skillAnalyses, requirements, IMPORTANCE_WEIGHTS) {
+  let totalWeightedRisk = 0;
+  let totalWeight = 0;
+
+  requirements.forEach(req => {
+    const skillData = skillAnalyses[req.skill];
+    const weight = IMPORTANCE_WEIGHTS[req.importance || 'medium'];
+    
+    totalWeightedRisk += skillData.risk.score * weight;
+    totalWeight += weight;
+  });
+
+  const overallScore = totalWeightedRisk / totalWeight;
+
+  let overallLevel;
+  if (overallScore >= 7) {
+    overallLevel = 'critical';
+  } else if (overallScore >= 5) {
+    overallLevel = 'high';
+  } else if (overallScore >= 3) {
+    overallLevel = 'medium';
+  } else {
+    overallLevel = 'low';
+  }
+
+  const readyToStart = overallScore < 5;
+
+  return {
+    score: Number(overallScore.toFixed(1)),
+    level: overallLevel,
+    readyToStart
+  };
+}
+
+function generateSummary(skillAnalyses, requirements) {
+  const totalSkills = requirements.length;
+  const skillsReady = Object.values(skillAnalyses).filter(s => s.gap === 0).length;
+  const skillsWithGaps = totalSkills - skillsReady;
+  const skillsMissingCompletely = Object.values(skillAnalyses).filter(s => s.coverage.count === 0).length;
+  const criticalBottlenecks = Object.values(skillAnalyses).filter(s => s.risk.bottleneck && s.risk.level === 'critical').length;
+  const highRiskSkills = Object.values(skillAnalyses).filter(s => s.risk.level === 'high' || s.risk.level === 'critical').length;
+  const mediumRiskSkills = Object.values(skillAnalyses).filter(s => s.risk.level === 'medium').length;
+  const lowRiskSkills = Object.values(skillAnalyses).filter(s => s.risk.level === 'low').length;
+
+  return {
+    totalSkills,
+    skillsReady,
+    skillsWithGaps,
+    skillsMissingCompletely,
+    criticalBottlenecks,
+    highRiskSkills,
+    mediumRiskSkills,
+    lowRiskSkills
+  };
+}

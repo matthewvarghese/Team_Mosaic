@@ -1,7 +1,30 @@
-import { test } from "node:test";
+import { test, afterEach, after } from "node:test";
 import assert from "node:assert/strict";
 import request from "supertest";
 import app from "../src/index.js";
+import { pool } from "../src/db/helpers.js";
+
+async function cleanDatabase() {
+  const tables = [
+    'project_requirements',
+    'projects',
+    'team_members',
+    'teams',
+    'skills',
+    'profiles',
+    'users'
+  ];
+
+  for (const table of tables) {
+    await pool.query(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE`);
+  }
+}
+
+afterEach(async () => {
+  await cleanDatabase();
+
+});
+
 
 async function login(email = "profile@test.dev") {
   const res = await request(app)
@@ -31,7 +54,7 @@ test("US-2: create profile ", async () => {
   assert.equal(res.status, 201);
   assert.equal(res.headers.location, "/me/profile");
   assert.equal(res.body.name, "Alice");
-  assert.equal(res.body.owner, "u2@test.dev");
+  assert.equal(res.body.email, "u2@test.dev");
 });
 
 test("US-2:updates profile ", async () => {
