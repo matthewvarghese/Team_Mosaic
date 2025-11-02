@@ -57,6 +57,15 @@ CREATE TABLE IF NOT EXISTS project_requirements (
   UNIQUE(project_id, skill)
 );
 
+CREATE TABLE IF NOT EXISTS project_requirements (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  skill VARCHAR(100) NOT NULL,
+  level INTEGER NOT NULL CHECK (level >= 1 AND level <= 5),
+  importance VARCHAR(20) DEFAULT 'medium' CHECK (importance IN ('critical', 'high', 'medium', 'nice-to-have')),
+  UNIQUE(project_id, skill)
+);
+
 CREATE INDEX IF NOT EXISTS idx_skills_user ON skills(user_email);
 CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_email);
 CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);
