@@ -49,13 +49,6 @@ CREATE TABLE IF NOT EXISTS projects (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS project_requirements (
-  id SERIAL PRIMARY KEY,
-  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  skill VARCHAR(100) NOT NULL,
-  level INTEGER NOT NULL CHECK (level >= 1 AND level <= 5),
-  UNIQUE(project_id, skill)
-);
 
 CREATE TABLE IF NOT EXISTS project_requirements (
   id SERIAL PRIMARY KEY,
