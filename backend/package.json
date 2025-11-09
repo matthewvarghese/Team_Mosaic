@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "NODE_ENV=test node --test --test-concurrency=1"
+    "test": "NODE_ENV=test node --test --test-concurrency=1",
+    "coverage": "NODE_ENV=test c8 node --test --test-concurrency=1"
   },
   "dependencies": {
     "cors": "^2.8.5",

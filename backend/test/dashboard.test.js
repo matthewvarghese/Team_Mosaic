@@ -277,4 +277,115 @@ describe("Gap Analysis Dashboard Tests (US-8)", () => {
     assert.ok(docker.risk.factors.gapRisk > 0); 
     assert.strictEqual(docker.risk.factors.coverageRisk, 1.0); 
   });
+
+
+  it("DASH-6: should generate CSV export with complete analysis data", async () => {
+    const res = await request(app)
+      .post(`/teams/${teamId}/gap-analysis`)
+      .set("x-forwarded-proto", "https")
+      .set("authorization", `Bearer ${ownerToken}`)
+      .send({ projectId });
+  
+    assert.strictEqual(res.status, 200);
+    
+    assert.ok(res.body.overallRisk.score);
+    assert.ok(res.body.overallRisk.level);
+    assert.ok(res.body.overallRisk.readyToStart !== undefined);
+    
+    assert.ok(res.body.summary.totalSkills >= 0);
+    assert.ok(res.body.summary.skillsReady >= 0);
+    assert.ok(res.body.summary.skillsWithGaps >= 0);
+    assert.ok(res.body.summary.skillsMissingCompletely >= 0);
+    assert.ok(res.body.summary.criticalBottlenecks >= 0);
+    assert.ok(res.body.summary.highRiskSkills >= 0);
+    assert.ok(res.body.summary.mediumRiskSkills >= 0);
+    assert.ok(res.body.summary.lowRiskSkills >= 0);
+    
+    Object.entries(res.body.skills).forEach(([skillName, data]) => {
+      assert.ok(skillName);
+      assert.ok(data.importance);
+      assert.ok(typeof data.required === 'number');
+      assert.ok(typeof data.average === 'number');
+      assert.ok(typeof data.gap === 'number');
+      assert.ok(typeof data.coverage.count === 'number');
+      assert.ok(typeof data.coverage.busFactor === 'number');
+      assert.ok(typeof data.risk.score === 'number');
+      assert.ok(data.risk.level);
+      assert.ok(typeof data.risk.bottleneck === 'boolean');
+      assert.ok(typeof data.risk.factors.gapRisk === 'number');
+      assert.ok(typeof data.risk.factors.coverageRisk === 'number');
+      assert.ok(typeof data.risk.factors.variabilityRisk === 'number');
+      assert.ok(typeof data.weightedGap === 'number');
+    });
+    
+    assert.ok(res.body.analyzedAt);
+  });
+  
+  it("DASH-7: should include project metadata in export data", async () => {
+    const res = await request(app)
+      .post(`/teams/${teamId}/gap-analysis`)
+      .set("x-forwarded-proto", "https")
+      .set("authorization", `Bearer ${ownerToken}`)
+      .send({ projectId });
+  
+    assert.strictEqual(res.status, 200);
+    
+    const projectRes = await request(app)
+      .get(`/teams/${teamId}/projects`)
+      .set("x-forwarded-proto", "https")
+      .set("authorization", `Bearer ${ownerToken}`);
+    
+    assert.strictEqual(projectRes.status, 200);
+    
+    const project = projectRes.body.find(p => p.id === projectId);
+    assert.ok(project);
+    assert.strictEqual(project.name, "Dashboard Test Project");
+    
+    const analyzedDate = new Date(res.body.analyzedAt);
+    assert.ok(analyzedDate instanceof Date && !isNaN(analyzedDate));
+    assert.ok(analyzedDate.toLocaleString());
+  });
+  
+  it("DASH-8: should have all CSV columns with correct data types", async () => {
+    const res = await request(app)
+      .post(`/teams/${teamId}/gap-analysis`)
+      .set("x-forwarded-proto", "https")
+      .set("authorization", `Bearer ${ownerToken}`)
+      .send({ projectId });
+  
+    assert.strictEqual(res.status, 200);
+    
+    const skills = res.body.skills;
+    assert.ok(Object.keys(skills).length > 0);
+    
+    Object.entries(skills).forEach(([skillName, data]) => {
+      assert.ok(typeof skillName === 'string');
+      assert.ok(skillName.length > 0);
+      
+      assert.ok(['critical', 'high', 'medium', 'nice-to-have'].includes(data.importance));
+      
+      assert.ok(!isNaN(data.required) && data.required >= 1 && data.required <= 5);
+      assert.ok(!isNaN(data.average) && data.average >= 0 && data.average <= 5);
+      assert.ok(!isNaN(data.gap) && data.gap >= 0);
+      assert.ok(!isNaN(data.coverage.count) && data.coverage.count >= 0);
+      assert.ok(!isNaN(data.coverage.busFactor) && data.coverage.busFactor >= 0);
+      assert.ok(!isNaN(data.risk.score) && data.risk.score >= 0 && data.risk.score <= 10);
+      
+      assert.ok(['critical', 'high', 'medium', 'low'].includes(data.risk.level));
+      
+      assert.ok(typeof data.risk.bottleneck === 'boolean');
+      
+      assert.ok(data.risk.factors.gapRisk >= 0 && data.risk.factors.gapRisk <= 1);
+      assert.ok(data.risk.factors.coverageRisk >= 0 && data.risk.factors.coverageRisk <= 1);
+      assert.ok(data.risk.factors.variabilityRisk >= 0 && data.risk.factors.variabilityRisk <= 1);
+      
+      assert.ok(!isNaN(data.weightedGap) && data.weightedGap >= 0);
+    });
+    
+    assert.ok(Number.isInteger(res.body.summary.totalSkills));
+    assert.ok(Number.isInteger(res.body.summary.skillsReady));
+    assert.ok(Number.isInteger(res.body.summary.skillsWithGaps));
+    assert.ok(Number.isInteger(res.body.summary.skillsMissingCompletely));
+    assert.ok(Number.isInteger(res.body.summary.criticalBottlenecks));
+  });
 });
