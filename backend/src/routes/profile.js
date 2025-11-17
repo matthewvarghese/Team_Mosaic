@@ -2,11 +2,12 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { query } from "../db/helpers.js";
 import { validateProfile } from "../validation/profile.js";
+import { auditMiddleware, AUDIT_ACTIONS, RESOURCE_TYPES } from '../middleware/auditLogger.js';
 
 export const profileRouter = Router();
 
 
-profileRouter.get("/me/profile", requireAuth, async (req, res) => {
+profileRouter.get("/me/profile", requireAuth,auditMiddleware(AUDIT_ACTIONS.PROFILE_VIEW, RESOURCE_TYPES.PROFILE), async (req, res) => {
   try {
     const result = await query(
       'SELECT email, name, title, bio, location, website FROM profiles WHERE email = $1',
@@ -25,7 +26,7 @@ profileRouter.get("/me/profile", requireAuth, async (req, res) => {
 });
 
 // create 
-profileRouter.post("/me/profile", requireAuth, async (req, res) => {
+profileRouter.post("/me/profile", requireAuth,auditMiddleware(AUDIT_ACTIONS.PROFILE_CREATE, RESOURCE_TYPES.PROFILE), async (req, res) => {
   try{
     const { owner, ...rest } = req.body || {};
     const v = validateProfile(rest);
@@ -62,7 +63,7 @@ profileRouter.post("/me/profile", requireAuth, async (req, res) => {
 });
 
 // update
-profileRouter.put("/me/profile", requireAuth, async (req, res) => {
+profileRouter.put("/me/profile", requireAuth,  auditMiddleware(AUDIT_ACTIONS.PROFILE_UPDATE, RESOURCE_TYPES.PROFILE),async (req, res) => {
   try {
     const existingResult = await query(
       'SELECT email, name, title, bio, location, website FROM profiles WHERE email = $1',
@@ -96,7 +97,7 @@ profileRouter.put("/me/profile", requireAuth, async (req, res) => {
   }
 });
 
-profileRouter.delete("/me/profile", requireAuth, async (req, res) => {
+profileRouter.delete("/me/profile", requireAuth,auditMiddleware(AUDIT_ACTIONS.PROFILE_DELETE, RESOURCE_TYPES.PROFILE), async (req, res) => {
   try{
     await query('DELETE FROM profiles WHERE email = $1', [req.user.email]);
     res.status(204).end();

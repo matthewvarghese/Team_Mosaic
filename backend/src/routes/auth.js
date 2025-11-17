@@ -3,10 +3,11 @@ import { signJwt } from "../auth/jwt.js";
 import { getGoogleAuthUrl, getGoogleUserFromCode } from "../auth/google.js";
 import { query } from "../db/helpers.js"; 
 import { requireAuth } from "../middleware/requireAuth.js";
+import { auditMiddleware, AUDIT_ACTIONS, RESOURCE_TYPES } from '../middleware/auditLogger.js';
 
 export const authRouter = Router();
 
-authRouter.post("/auth/login", async (req, res) => {
+authRouter.post("/auth/login", auditMiddleware(AUDIT_ACTIONS.LOGIN, RESOURCE_TYPES.USER), async (req, res) => {
   try {
     const { providerCode, email } = req.body;
 
@@ -97,6 +98,6 @@ authRouter.get("/auth/providers", (req, res) => {
   return res.json(providers);
 });
 
-authRouter.post("/auth/logout", (req, res) => {
+authRouter.post("/auth/logout", auditMiddleware(AUDIT_ACTIONS.LOGOUT, RESOURCE_TYPES.USER),(req, res) => {
   return res.status(204).end();
 });

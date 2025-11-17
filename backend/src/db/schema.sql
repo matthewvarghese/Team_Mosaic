@@ -64,3 +64,53 @@ CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_email);
 CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);
 CREATE INDEX IF NOT EXISTS idx_projects_team ON projects(team_id);
 CREATE INDEX IF NOT EXISTS idx_project_reqs_project ON project_requirements(project_id);
+
+CREATE TABLE audit_logs (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    user_email VARCHAR(255),
+    action VARCHAR(50) NOT NULL,
+    resource_type VARCHAR(50) NOT NULL,
+    resource_id VARCHAR(255),
+    status VARCHAR(20) NOT NULL, 
+    ip_address INET,
+    user_agent TEXT,
+    request_method VARCHAR(10),
+    request_path TEXT,
+    details JSONB,
+    error_message TEXT,
+    
+    CONSTRAINT audit_logs_user_email_fk FOREIGN KEY (user_email) 
+        REFERENCES users(email) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
+CREATE INDEX idx_audit_logs_user_email ON audit_logs(user_email);
+CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
+CREATE INDEX idx_audit_logs_status ON audit_logs(status);
+CREATE INDEX idx_audit_logs_composite ON audit_logs(user_email, timestamp DESC);
+
+CREATE OR REPLACE FUNCTION prevent_audit_deletion()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Audit logs cannot be deleted for compliance reasons';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER prevent_audit_log_deletion
+BEFORE DELETE ON audit_logs
+FOR EACH ROW
+EXECUTE FUNCTION prevent_audit_deletion();
+
+CREATE OR REPLACE FUNCTION prevent_audit_modification()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Audit logs cannot be modified for compliance reasons';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER prevent_audit_log_modification
+BEFORE UPDATE ON audit_logs
+FOR EACH ROW
+EXECUTE FUNCTION prevent_audit_modification();

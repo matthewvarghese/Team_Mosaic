@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { validateSkill } from "../validation/skills.js";
 import { query } from "../db/helpers.js";
+import { auditMiddleware, AUDIT_ACTIONS, RESOURCE_TYPES } from '../middleware/auditLogger.js';
 
 export const skillsRouter = Router();
 
@@ -19,7 +20,7 @@ skillsRouter.get("/me/skills", requireAuth, async (req, res) => {
   }
 });
 
-skillsRouter.post("/me/skills", requireAuth, async (req, res) => {
+skillsRouter.post("/me/skills", requireAuth,auditMiddleware(AUDIT_ACTIONS.SKILL_CREATE, RESOURCE_TYPES.SKILL), async (req, res) => {
   try {
     const v = validateSkill(req.body);
     if (!v.ok) return res.status(422).json({ errors: v.errors });
@@ -55,7 +56,7 @@ skillsRouter.post("/me/skills", requireAuth, async (req, res) => {
   }
 });
 
-skillsRouter.put("/me/skills/:id", requireAuth, async (req, res) => {
+skillsRouter.put("/me/skills/:id", requireAuth, auditMiddleware(AUDIT_ACTIONS.SKILL_UPDATE, RESOURCE_TYPES.SKILL),async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -98,7 +99,7 @@ skillsRouter.put("/me/skills/:id", requireAuth, async (req, res) => {
   }
 });
 
-skillsRouter.delete("/me/skills/:id", requireAuth, async (req, res) => {
+skillsRouter.delete("/me/skills/:id", requireAuth, auditMiddleware(AUDIT_ACTIONS.SKILL_DELETE, RESOURCE_TYPES.SKILL), async (req, res) => {
   try {
     const { id } = req.params;
 

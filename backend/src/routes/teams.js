@@ -4,6 +4,7 @@ import { query, transaction } from "../db/helpers.js";
 import { validateTeam } from "../validation/teams.js";
 import { validateMemberAdd, validateMemberRole } from "../validation/members.js";
 import { validateGapRequest } from "../validation/analysis.js";
+import { auditMiddleware, logAudit, AUDIT_ACTIONS, RESOURCE_TYPES } from '../middleware/auditLogger.js';
 
 export const teamRouter = Router();
 
@@ -32,7 +33,7 @@ function hasMember(team, email) {
 }
 
 
-teamRouter.post("/teams", requireAuth, async (req, res) => {
+teamRouter.post("/teams", requireAuth, auditMiddleware(AUDIT_ACTIONS.TEAM_CREATE, RESOURCE_TYPES.TEAM), async (req, res) => {
   try {
     const v = validateTeam(req.body);
     if (!v.ok) return res.status(422).json({ errors: v.errors });
@@ -82,7 +83,7 @@ teamRouter.post("/teams", requireAuth, async (req, res) => {
   }
 });
 
-teamRouter.get("/teams/:id", requireAuth, async (req, res) => {
+teamRouter.get("/teams/:id", requireAuth, auditMiddleware(AUDIT_ACTIONS.TEAM_VIEW, RESOURCE_TYPES.TEAM), async (req, res) => {
   try {
     const team = await findTeam(req.params.id);
     if (!team) return res.status(404).json({ error: "Team not found" });
@@ -95,7 +96,7 @@ teamRouter.get("/teams/:id", requireAuth, async (req, res) => {
   }
 });
 
-teamRouter.get("/teams", requireAuth,async (req, res) => {
+teamRouter.get("/teams", requireAuth, async (req, res) => {
   try {
     const teamIdsResult = await query(
       `SELECT DISTINCT team_id FROM team_members WHERE user_email = $1`,
@@ -136,7 +137,7 @@ teamRouter.get("/teams", requireAuth,async (req, res) => {
   }
 });
 
-teamRouter.get("/teams/:id/members", requireAuth,async (req, res) => {
+teamRouter.get("/teams/:id/members", auditMiddleware(AUDIT_ACTIONS.MEMBER_LIST, RESOURCE_TYPES.MEMBER), requireAuth,async (req, res) => {
   try {
     const team = await findTeam(req.params.id);
     if (!team) return res.status(404).json({ error: "Team not found" });
@@ -150,7 +151,7 @@ teamRouter.get("/teams/:id/members", requireAuth,async (req, res) => {
   }
 });
 
-teamRouter.post("/teams/:id/members", requireAuth, async (req, res) => {
+teamRouter.post("/teams/:id/members", auditMiddleware(AUDIT_ACTIONS.MEMBER_ADD, RESOURCE_TYPES.MEMBER), requireAuth, async (req, res) => {
   try {
     const team = await findTeam(req.params.id);
     if (!team) return res.status(404).json({ error: "Team not found" });
@@ -186,7 +187,7 @@ teamRouter.post("/teams/:id/members", requireAuth, async (req, res) => {
   }
 });
 
-teamRouter.put("/teams/:id/members/:user", requireAuth,async  (req, res) => {
+teamRouter.put("/teams/:id/members/:user", auditMiddleware(AUDIT_ACTIONS.MEMBER_UPDATE, RESOURCE_TYPES.MEMBER), requireAuth,async  (req, res) => {
   try {
   const t = await findTeam(req.params.id);
   if (!t) return res.status(404).json({ error: "Team not found" });
@@ -218,7 +219,7 @@ teamRouter.put("/teams/:id/members/:user", requireAuth,async  (req, res) => {
 }
 });
 
-teamRouter.delete("/teams/:id/members/:user", requireAuth, async (req, res) => {
+teamRouter.delete("/teams/:id/members/:user", auditMiddleware(AUDIT_ACTIONS.MEMBER_REMOVE, RESOURCE_TYPES.MEMBER), requireAuth, async (req, res) => {
   try {
     const team = await findTeam(req.params.id);
     if (!team) return res.status(404).json({ error: "Team not found" });
@@ -249,7 +250,7 @@ teamRouter.delete("/teams/:id/members/:user", requireAuth, async (req, res) => {
   }
 });
 
-teamRouter.post("/teams/:id/gap-analysis", requireAuth, async (req, res) => {
+teamRouter.post("/teams/:id/gap-analysis", auditMiddleware(AUDIT_ACTIONS.GAP_ANALYSIS_RUN, RESOURCE_TYPES.GAP_ANALYSIS), requireAuth, async (req, res) => {
   try {
     const team = await findTeam(req.params.id);
     if (!team) return res.status(404).json({ error: "Team not found" });
