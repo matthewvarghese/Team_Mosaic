@@ -59,8 +59,23 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const setToken = (token) => {
-    saveToken(token);
+  const setToken = async (token) => {
+    try {
+      saveToken(token);
+      
+      const userResponse = await authAPI.me();
+      const userData = {
+        email: userResponse.data.me?.sub || userResponse.data.sub,
+        raw: userResponse.data
+      };
+      setUser(userData);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to fetch user:', error);
+      removeToken();
+      return { success: false, error };
+    }
   };
 
   const logout = () => {
