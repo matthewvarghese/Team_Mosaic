@@ -189,6 +189,51 @@ export const DashboardPage = () => {
 
        
 
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {cards.map((card, index) => (
+            <Link
+              key={index}
+              to={card.link}
+              className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden"
+            >
+              <div className="p-6">
+                <div className={`inline-flex p-3 ${card.bgColor} rounded-xl mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                  <div className={card.iconColor}>
+                    {card.icon}
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                  {card.title}
+                </h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  {card.description}
+                </p>
+
+                <div className="flex items-center text-blue-600 font-medium text-sm group-hover:gap-2 transition-all">
+                  <span>Get started</span>
+                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+
+              <div className={`h-1 bg-gradient-to-r ${card.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300`}></div>
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-12 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-8 border border-blue-100">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            
+          </div>
+        </div>
       </main>
     </div>
   );
